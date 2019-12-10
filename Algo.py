@@ -19,7 +19,7 @@ class C51:
         self.n_atoms = 51
         self.Vmin = -10.0
         self.Vmax = 10.0
-        self.dz = (self.Vmax - self.Vmin) / float(self.num_atoms - 1)
+        self.dz = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
         self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz)
 
         if len(obs_space.shape) == 3:
