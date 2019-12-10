@@ -64,17 +64,14 @@ if __name__ == '__main__':
     logprint ('running on device', device)
 
     # create an instance of the agent and corresponding algorithm
-    if args.algo == 'dqn':
-        algo = Algo.DQN(
+    if args.algo == 'C51':
+        algo = Algo.C51(
             env.obs_space, env.act_space,
             args.lr, args.replay_size, args.batch_size, args.discount, args.target_update, args.eps_decay,
             device)
-    elif args.algo == 'a2c':
-        assert args.nproc * args.train_freq == args.batch_size
-        algo = Algo.ActorCritic(
-            env.obs_space, env.act_space,
-            args.lr, args.nproc, args.train_freq, args.discount, args.ent_coef, args.value_coef,
-            device)
+    else:
+        print ("Wrong algorithm")
+        raise
 
     if len(args.load):
         algo.load(args.load)
