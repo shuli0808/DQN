@@ -1,21 +1,17 @@
 ## IE 534 Assignment: Reinforcement Learning
+## Final Project
 
 #### Getting Started
 You can either:
 
-* ~~Fork your own copy of the repo, and work on it~~
-  Just realized this is probably not a good idea, because you can see other people's solutions...
-Try to do a private fork then: https://stackoverflow.com/questions/10065526/github-how-to-make-a-fork-of-public-repository-private
+* This is an Pytorch implementation on Distributional Q-Learning
+  The link to the paper is: https://arxiv.org/pdf/1707.06887.pdf
 
-* or, download a zip file containing everything: https://github.com/mikuhatsune/ie534_rl_hw/archive/master.zip (**recommended**)
-* or, directly clone the repo to local:
+
+* The code is modified from a HW assignment from UIUC IE 534:
 ```bash
 git clone https://github.com/mikuhatsune/ie534_rl_hw.git
 ```
-
-Please follow instructions in the Jupyter notebook [rl.ipynb](rl.ipynb).
-
-An example of finished homework is in [example_solution/rl.ipynb](example_solution/rl.ipynb) and [example_solution/rl.pdf](example_solution/rl.pdf).
 
 Example training logs [example_solution/log_breakout_dqn.txt](example_solution/log_breakout_dqn.txt), and [example_solution/log_breakout_a2c.txt](example_solution/log_breakout_a2c.txt).
 Format:
