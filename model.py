@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import numpy as np
-from __future__ import print_function
 import time
 
 import torch
