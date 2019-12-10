@@ -28,7 +28,7 @@ class NaiveReplay():
         states = torch.as_tensor(np.array(states), device=device)
         actions = torch.as_tensor(np.array(actions, dtype=np.int64), device=device)
         rewards = torch.as_tensor(np.array(rewards, dtype=np.float32), device=device)
-        next_states = torch.as_tensor(np.array(next_states, device=device))
+        next_states = torch.as_tensor(np.array(next_states), device=device)
 
         done = torch.as_tensor(np.array([s is None for s in next_states], 
             dtype=np.bool if hasattr(torch, 'bool') else np.uint8), device=device)
