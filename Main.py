@@ -9,12 +9,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--niter', type=int, default=2000000, help='# training iterations')
-    parser.add_argument('--env', type=str, default='Pong-v0')
+    parser.add_argument('--env', type=str, default='BreakoutDeterministic-v4')
     parser.add_argument('--algo', type=str, default='C51')
     parser.add_argument('--nproc', type=int, default=2, help='# parallel processes')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--train_freq', type=int, default=2, help='train every train_freq iterations')
-    parser.add_argument('--train_start', type=int, default=5000, help='train start iteration')
+    parser.add_argument('--train_start', type=int, default=1000, help='train start iteration')
     parser.add_argument('--batch_size', type=int, default=32, help='SGD batch size')
     parser.add_argument('--discount', type=float, default=0.99, help='discount factor (or gamma)')
     parser.add_argument('--replay_size', type=int, default=500000, help='for DQN, replay buffer size')
@@ -70,7 +70,7 @@ if __name__ == '__main__':
             args.lr, args.replay_size, args.batch_size, args.discount, args.target_update, args.eps_decay,
             device)
     else:
-        print ("Wrong algorithm")
+        print ("Wrong Agent")
         raise
 
     if len(args.load):

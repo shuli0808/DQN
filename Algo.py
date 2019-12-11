@@ -6,6 +6,9 @@ from torch.distributions import Categorical
 import model, Replay
 import random
 from collections import namedtuple
+import numpy as np
+import torch.autograd as autograd
+
 
 class C51:
     def __init__(self, obs_space, act_space, lr=1e-4, replay_size=500000, batch_size=32,
@@ -21,7 +24,7 @@ class C51:
         self.Vmax = 10.0
         self.dz = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
         self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz)
-
+        print(len(obs_space.shape))
         if len(obs_space.shape) == 3:
             self.q_func = model.Model(n_in=obs_space.shape, n_out=act_space.n).to(device)
             self.target_q_func = model.Model(n_in=obs_space.shape, n_out=act_space.n).to(device)
@@ -60,7 +63,13 @@ class C51:
         self.num_act_steps += 1
 
         with torch.no_grad():
-            greedy_actions = self.q_func(obses).max(1)[1].tolist()
+            # print("#######")
+            # print(self.q_func(obses))
+            # print(self.q_func(obses).max(1))
+            # print(self.q_func(obses).max(1)[1])
+            greedy_actions = self.q_func(obses)[1].max(1)[1].tolist()
+
+
         actions = []
         for i in range(len(obses)):
             if random.random() < eps:
@@ -69,6 +78,7 @@ class C51:
                 a = greedy_actions[i]
             actions.append(a)
         return actions
+
 
     def observe(self, obses, actions, transitions):
         for s,a,(sn,r,t,_) in zip(obses, actions, transitions):
@@ -106,32 +116,37 @@ class C51:
         #     next_state_values[~done] = next_q_values.max(1)[0]
 
 
+
         curr_dist, _  = self.q_func.forward(state_batch)
-        curr_action_dist = curr_dist[range(self.batch_size), action_batch]
+        # curr_action_dist = curr_dist[range(batch_size), actions]
 
         next_dist, next_qvals = self.target_q_func.forward(next_states)
-        next_actions = torch.max(next_qvals, 1)[1]
-        next_dist = nn.Softmax(next_dist)
-
+        print("corresponding is ", next_dist.size())
+        next_dist_ = next_dist[torch.arange(self.batch_size), action_batch]
+        print(next_dist_.size())
+        # next_actions = torch.max(next_qvals, 1)[1]
+        # next_dist = self.model.softmax(next_dist)
+        optimal_dist = next_dist
 
         # Get Optimal Actions for the next states (from distribution z)
-        optimal_dist = next_dist[range(self.batch_size), next_actions]
+        # optimal_dist = next_dist[range(self.batch_size), next_actions]
 
 
 
-        #m_prob = [np.zeros((self.batch_size, self.n_atoms)) for i in range(self.act_space)]
-        m_prob = torch.zeros(self.batch_size, self.n_atoms)
+        m_prob = torch.zeros((self.act_space.n, self.n_atoms))
+        #m_prob = torch.zeros(self.batch_size, self.n_atoms)
         # Project Next State Value Distribution (of optimal action) to Current State
         for i in range(self.batch_size):
             for j in range(self.n_atoms):                   
-                Tz = reward_batch[i] + (1 - done[i]) * self.discount * self.z[j]
-                Tz = torch.clamp(Tz, Vmin, Vmax)
+                Tz = reward_batch[i] + (1 - (done[i]).int()) * self.discount * self.z[j]
+                Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
                 bj = (Tz - self.Vmin) / self.dz 
-                m_l, m_u = torch.floor(bj).long.item(), torch.ceil(bj).long.item()
-                m_prob[i][l] += prob_[i][j] * (m_u - bj)
-                m_prob[i][u] += prob_[i][j] * (bj - m_l)
+                m_l, m_u = torch.floor(bj).long().item(), torch.ceil(bj).long().item()
+                m_prob[i][m_l] += optimal_dist[i][j] * (m_u - bj)
+                m_prob[i][m_u] += optimal_dist[i][j] * (bj - m_l)
             
-        loss = - torch.sum(optimal_dist * (torch.log(optimal_dist) - torch.log(m_prob)))
+        #loss = - torch.sum(optimal_dist * (torch.log(optimal_dist) - torch.log(m_prob)))
+        loss = - F.kl_div(state_batch ,m_prob)
 
         self.optimizer.zero_grad()
         loss.backward()

@@ -11,7 +11,7 @@ import torch.nn.functional as F
 class Model(nn.Module):
     def __init__(self, n_in=[4,84,84], conv_channels=[32, 64, 64],
                  conv_kernels=[8, 4, 3], conv_strides=[4, 2, 1], batch_size = 32,
-                 n_atoms=51, n_fc = [128, 256], n_out = 6):
+                 n_atoms=51, n_fc = [256], n_out = 6):
         super(Model, self).__init__()
         #paramters from paper
         self.n_in = n_in
@@ -20,6 +20,11 @@ class Model(nn.Module):
         self.n_atoms = n_atoms
         self.dist_list = []
         self.batch_size = batch_size
+
+        self.Vmin = -10.0
+        self.Vmax = 10.0
+        self.dz = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
+        self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz)
 
 
         c0 = n_in[0]
@@ -44,8 +49,10 @@ class Model(nn.Module):
             self.fc_layers.append(nn.ReLU())
             h0 = h
         
-        self.fc_layers.append(nn.Linear(h, self.n_out*self.n_atoms))
+        self.fc_layers.append(nn.Linear(h, self.n_atoms))
+        self.fc_layers.append(nn.Softmax(dim = 1))
         self.fc_layers = nn.Sequential(*self.fc_layers)
+        #self.softmax = nn.Softmax(dim = 1)
 
 
     def forward(self, x):
@@ -56,8 +63,27 @@ class Model(nn.Module):
         # (flatten) reshape x into a batch of vectors
         x = x.view(x.size(0), -1)
         # feed x into the self.fc_layers
-        dist_list = self.fc_layers(x).view(self.n_atoms, -1)
-        prob = nn.Softmax(dist_list)
+        dist_list = []
+        dist_tensor = torch.zeros((2, self.n_out, self.n_atoms))
+        res = torch.zeros((self.n_out, 2 ))
+        for i in range(int(dist_tensor.size()[0])):
+            #dist_list.append(self.fc_layers(x).view(self.n_atoms,-1))
+            dist_tensor[i,:,:] = self.fc_layers(x).view(self.n_atoms,-1)[:,i]
 
 
-        return dist_list, prob
+        res = torch.zeros(( 2, self.n_out))
+        for i in range(int(dist_tensor.size()[0])):
+            res[i,:] = torch.matmul(dist_tensor[i,:,:],self.z)
+
+        # print("dist len ", len(dist_list))
+        # print("dist dimen", dist_list[0].size())
+        # print("sum dim = 0 ", torch.sum(dist_list[0], dim = 0))
+        # print("sum dim = 1 ", torch.sum(dist_list[0], dim = 1))
+        # print("dist_tensor dim ", dist_tensor.size())
+
+
+
+        #prob = self.softmax(self.dist_list)
+
+
+        return dist_tensor, res
