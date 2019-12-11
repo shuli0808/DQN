@@ -9,19 +9,18 @@ import torch.autograd as autograd
 import torch.nn.functional as F
 
 class Model(nn.Module):
-    def __init__(self, n_in=[3,210,160], conv_channels=[32, 64, 64],
-                 conv_kernels=[8, 4, 3], conv_strides=[4, 2, 1], n_atoms=51,
-                 Vmin=-10., Vmax= 30, n_fc = [128, 256], n_out = 6):
+    def __init__(self, n_in=[4,84,84], conv_channels=[32, 64, 64],
+                 conv_kernels=[8, 4, 3], conv_strides=[4, 2, 1], batch_size = 32,
+                 n_atoms=51, n_fc = [128, 256], n_out = 6):
         super(Model, self).__init__()
         #paramters from paper
         self.n_in = n_in
         # Number of actions depending on the game
         self.n_out = n_out
         self.n_atoms = n_atoms
-        self.Vmin = Vmin
-        self.Vmax = Vmax
-        self.delta_z = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
-        
+        self.dist_list = []
+        self.batch_size = batch_size
+
 
         c0 = n_in[0]
         h0 = n_in[1]
@@ -41,12 +40,11 @@ class Model(nn.Module):
         h0 = h0 * h0 * conv_channels[-1]
         for i, h in enumerate(n_fc):
             # append Linear and ReLU layers
-            self.fc_layers.append(nn.Linear(h0, h))
+            self.fc_layers.append(nn.Linear(h0, h))            
             self.fc_layers.append(nn.ReLU())
             h0 = h
-
+        
         self.fc_layers.append(nn.Linear(h, self.n_out*self.n_atoms))
-        self.fc_layers.append(nn.Softmax(dim=1))
         self.fc_layers = nn.Sequential(*self.fc_layers)
 
 
@@ -58,6 +56,8 @@ class Model(nn.Module):
         # (flatten) reshape x into a batch of vectors
         x = x.view(x.size(0), -1)
         # feed x into the self.fc_layers
-        x = self.fc_layers(x)
+        dist_list = self.fc_layers(x).view(self.n_atoms, -1)
+        prob = nn.Softmax(dist_list)
 
-        return x
+
+        return dist_list, prob
