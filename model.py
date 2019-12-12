@@ -63,7 +63,6 @@ class Model(nn.Module):
         # (flatten) reshape x into a batch of vectors
         x = x.view(x.size(0), -1)
         # feed x into the self.fc_layers
-        dist_list = []
         dist_tensor = torch.zeros((x.size()[0], self.n_out, self.n_atoms))
         # for i in range(self.n_out):
         #     #dist_list.append(self.fc_layers(x).view(self.n_atoms,-1))

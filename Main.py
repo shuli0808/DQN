@@ -13,8 +13,8 @@ if __name__ == '__main__':
     parser.add_argument('--algo', type=str, default='C51')
     parser.add_argument('--nproc', type=int, default=2, help='# parallel processes')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
-    parser.add_argument('--train_freq', type=int, default=2, help='train every train_freq iterations')
-    parser.add_argument('--train_start', type=int, default=1000, help='train start iteration')
+    parser.add_argument('--train_freq', type=int, default=100, help='train every train_freq iterations')
+    parser.add_argument('--train_start', type=int, default=5000, help='train start iteration')
     parser.add_argument('--batch_size', type=int, default=32, help='SGD batch size')
     parser.add_argument('--discount', type=float, default=0.99, help='discount factor (or gamma)')
     parser.add_argument('--replay_size', type=int, default=500000, help='for DQN, replay buffer size')
@@ -137,9 +137,7 @@ if __name__ == '__main__':
         algo.observe(obses, actions, results)
         if it % args.train_freq == 0 and it >= args.train_start:
             loss = algo.train()
-
         obses, actions = new_obses, new_actions
-
         for i, (sn,r,t, (r_raw,true_done)) in enumerate(results):
             episode_lens[i] += 1
             episode_rewards[i] += r
@@ -153,7 +151,6 @@ if __name__ == '__main__':
             if true_done:
                 avg_raw_episode_reward = exp_moving_average(avg_raw_episode_reward, raw_episode_rewards[i])
                 raw_episode_rewards[i] = 0
-
         num_env_steps += env.nproc
         if it % args.print_freq == 0:
             # cv2.imwrite('%d.jpg'%it, np.concatenate(obses[0]))
