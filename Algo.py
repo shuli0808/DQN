@@ -118,8 +118,7 @@ class C51:
         #next_dist_ = next_dist[torch.arange(self.batch_size), action_batch]
         # next_actions = torch.max(next_qvals, 1)[1]
         # next_dist = self.model.softmax(next_dist)
-        optimal_dist = next_dist.permute(1,0,2).cuda()
-
+        optimal_dist = next_dist.permute(1,0,2).to(device = self.device)
         # Get Optimal Actions for the next states (from distribution z)
 
 
