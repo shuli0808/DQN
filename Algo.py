@@ -24,7 +24,6 @@ class C51:
         self.Vmax = 10.0
         self.dz = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
         self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz)
-        print(len(obs_space.shape))
         if len(obs_space.shape) == 3:
             self.q_func = model.Model(n_in=obs_space.shape, n_out=act_space.n).to(device)
             self.target_q_func = model.Model(n_in=obs_space.shape, n_out=act_space.n).to(device)
@@ -38,8 +37,8 @@ class C51:
         print ('parameters to optimize:',
             [(name, p.shape, p.requires_grad) for name,p in self.q_func.named_parameters()],
             '\n')
-        # self.optimizer = torch.optim.RMSprop(self.q_func.parameters(), lr=lr)
-        self.optimizer = torch.optim.Adam(self.q_func.parameters(), lr=lr, betas=(0.9,0.99), eps=1e-8)
+        self.optimizer = torch.optim.RMSprop(self.q_func.parameters(), lr=lr)
+        #self.optimizer = torch.optim.Adam(self.q_func.parameters(), lr=lr, betas=(0.9,0.99), eps=1e-8)
 
         # number of action steps done
         self.num_act_steps = 0
@@ -89,16 +88,9 @@ class C51:
             self.replay.sample_torch(self.batch_size, self.device)
 
     def train(self):
-        [state_batch, action_batch, reward_batch, next_states, done] = self.replay.cur_batch
+        #[state_batch, action_batch, reward_batch, next_states, done] = self.replay.cur_batch
+        state_batch, action_batch, reward_batch, done, next_states = self.replay.cur_batch
         self.replay.cur_batch = None
-
-        """
-        q_values = self.q_func(state_batch)[torch.arange(self.batch_size), action_batch]
-
-        next_state_values = torch.zeros(self.batch_size, device=self.device)
-        next_q_values = self.target_q_func(next_states).detach()
-        """
-
 
         # dist_list, prob = self.q_func(state_batch)       
         # q_values = np.sum(np.multiply(prob, self.z), axis=2) 
@@ -117,47 +109,55 @@ class C51:
 
 
 
-        curr_dist, _  = self.q_func.forward(state_batch)
+        curr_dist, qvals  = self.q_func.forward(state_batch)
         # curr_action_dist = curr_dist[range(batch_size), actions]
 
-        next_dist, next_qvals = self.target_q_func.forward(next_states)
-        print("corresponding is ", next_dist.size())
-        next_dist_ = next_dist[torch.arange(self.batch_size), action_batch]
-        print(next_dist_.size())
+        next_dist, next_qval = self.target_q_func.forward(next_states)
+        next_qvals = next_qval.max(1)[1].tolist()
+
+        #next_dist_ = next_dist[torch.arange(self.batch_size), action_batch]
         # next_actions = torch.max(next_qvals, 1)[1]
         # next_dist = self.model.softmax(next_dist)
-        optimal_dist = next_dist
+        optimal_dist = next_dist.permute(1,0,2).cuda()
 
         # Get Optimal Actions for the next states (from distribution z)
-        # optimal_dist = next_dist[range(self.batch_size), next_actions]
 
 
-
-        m_prob = torch.zeros((self.act_space.n, self.n_atoms))
+        #m_prob = [np.zeros((num_samples, self.num_atoms)) for i in range(action_size)]
+        m_prob = torch.zeros((self.act_space.n, self.batch_size ,self.n_atoms), device=self.device)
         #m_prob = torch.zeros(self.batch_size, self.n_atoms)
         # Project Next State Value Distribution (of optimal action) to Current State
         for i in range(self.batch_size):
-            for j in range(self.n_atoms):                   
-                Tz = reward_batch[i] + (1 - (done[i]).int()) * self.discount * self.z[j]
+            if done[i]:
+                Tz = reward_batch[i]
                 Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
                 bj = (Tz - self.Vmin) / self.dz 
-                m_l, m_u = torch.floor(bj).long().item(), torch.ceil(bj).long().item()
-                m_prob[i][m_l] += optimal_dist[i][j] * (m_u - bj)
-                m_prob[i][m_u] += optimal_dist[i][j] * (bj - m_l)
+                m_l, m_u = torch.floor(bj).long(), torch.ceil(bj).long()
+                m_prob[action_batch[i]][i][m_l] += (m_u - bj)
+                m_prob[action_batch[i]][i][m_u] += (bj - m_l)
+            else:
+                for j in range(self.n_atoms):                   
+                    Tz = reward_batch[i] + self.discount * self.z[j]
+                    Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
+                    bj = (Tz - self.Vmin) / self.dz 
+                    m_l, m_u = torch.floor(bj).long(), torch.ceil(bj).long()
+                    m_prob[action_batch[i]][i][m_l] += optimal_dist[next_qvals[i]][i][j] * (m_u - bj)
+                    m_prob[action_batch[i]][i][m_u] += optimal_dist[next_qvals[i]][i][j] * (bj - m_l)
             
         #loss = - torch.sum(optimal_dist * (torch.log(optimal_dist) - torch.log(m_prob)))
-        loss = - F.kl_div(state_batch ,m_prob)
 
+        loss = - F.kl_div(optimal_dist ,m_prob)/self.batch_size
+        loss = loss.cuda()
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.q_func.parameters(), 10)
         self.optimizer.step()
         # The ugly patch for using Adam on BlueWaters...
-        for group in self.optimizer.param_groups:
-            for p in group['params']:
-                state = self.optimizer.state[p]
-                if state['step'] >= 1022:
-                    state['step'] = 1022
+        # for group in self.optimizer.param_groups:
+        #     for p in group['params']:
+        #         state = self.optimizer.state[p]
+        #         if state['step'] >= 1022:
+        #             state['step'] = 1022
 
         self.num_train_steps += 1
         if self.num_train_steps % self.target_update == 0:

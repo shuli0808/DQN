@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--value_coef', type=float, default=0.5, help='for A2C, coefficient of value function loss')
     parser.add_argument('--print_freq', type=int, default=500)
     parser.add_argument('--checkpoint_freq', type=int, default=500000)
-    parser.add_argument('--save_dir', type=str, default='Pong/')
+    parser.add_argument('--save_dir', type=str, default='BreakoutDeterministic/')
     parser.add_argument('--log', type=str, default='log.txt', help='the log file name, appended to save_dir')
     parser.add_argument('--load', type=str, default='')
     parser.add_argument('--parallel_env', type=int, default=1)

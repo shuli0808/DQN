@@ -28,12 +28,21 @@ class NaiveReplay():
         states = torch.as_tensor(np.array(states), device=device)
         actions = torch.as_tensor(np.array(actions, dtype=np.int64), device=device)
         rewards = torch.as_tensor(np.array(rewards, dtype=np.float32), device=device)
-        next_states = torch.as_tensor(np.array(next_states), device=device)
+        # next_states = torch.as_tensor(np.array(next_states), device=device)
 
-        done = torch.as_tensor(np.array([s is None for s in next_states], 
+        # done = torch.as_tensor(np.array([s is None for s in next_states], 
+        #     dtype=np.bool if hasattr(torch, 'bool') else np.uint8), device=device)
+        # #modify the code from HW 6 for this project
+        # ret = [states, actions, rewards, next_states, done]
+        non_terminal_mask = torch.as_tensor(np.array([s is None for s in next_states], 
             dtype=np.bool if hasattr(torch, 'bool') else np.uint8), device=device)
-        #modify the code from HW 6 for this project
-        ret = [states, actions, rewards, next_states, done]
+        non_terminal_next_states = torch.zeros(states.size(), device=device)
+        for i in range(states.size()[0]):
+            if next_states[i] is not None:
+                non_terminal_next_states[i] = torch.as_tensor(np.array(next_states[i]))
+
+        # for Atari, dtype: uint8, int64, float32, bool, uint8
+        ret = [states, actions, rewards, non_terminal_mask, non_terminal_next_states]
         # if device: ret = [d.to(device) for d in ret]
         self.cur_batch = ret
         return self.cur_batch

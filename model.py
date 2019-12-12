@@ -64,16 +64,18 @@ class Model(nn.Module):
         x = x.view(x.size(0), -1)
         # feed x into the self.fc_layers
         dist_list = []
-        dist_tensor = torch.zeros((2, self.n_out, self.n_atoms))
-        res = torch.zeros((self.n_out, 2 ))
-        for i in range(int(dist_tensor.size()[0])):
-            #dist_list.append(self.fc_layers(x).view(self.n_atoms,-1))
-            dist_tensor[i,:,:] = self.fc_layers(x).view(self.n_atoms,-1)[:,i]
+        dist_tensor = torch.zeros((x.size()[0], self.n_out, self.n_atoms))
+        # for i in range(self.n_out):
+        #     #dist_list.append(self.fc_layers(x).view(self.n_atoms,-1))
+        #     dist_tensor[i,:] = self.fc_layers(x) ## [2, 51]
+        for i in range(x.size()[0]):
+            for j in range(self.n_out):
+                dist_tensor[i,j,:] = self.fc_layers(x)[i]
+ 
 
-
-        res = torch.zeros(( 2, self.n_out))
-        for i in range(int(dist_tensor.size()[0])):
-            res[i,:] = torch.matmul(dist_tensor[i,:,:],self.z)
+        res = torch.zeros((x.size()[0], self.n_out))
+        for i in range(x.size()[0]):
+            res[i,:] = torch.matmul(dist_tensor[i,:,:], self.z)
 
         # print("dist len ", len(dist_list))
         # print("dist dimen", dist_list[0].size())
