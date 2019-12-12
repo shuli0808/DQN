@@ -108,7 +108,6 @@ class C51:
         #     next_state_values[~done] = next_q_values.max(1)[0]
 
 
-
         curr_dist, qvals  = self.q_func.forward(state_batch)
         # curr_action_dist = curr_dist[range(batch_size), actions]
 
@@ -132,8 +131,8 @@ class C51:
                 Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
                 bj = (Tz - self.Vmin) / self.dz 
                 m_l, m_u = torch.floor(bj).long(), torch.ceil(bj).long()
-                m_prob[action_batch[i]][i][m_l] += (m_u - bj)
-                m_prob[action_batch[i]][i][m_u] += (bj - m_l)
+                m_prob[action_batch[i]][i][int(m_l)] += (m_u - bj)
+                m_prob[action_batch[i]][i][int(m_u)] += (bj - m_l)
             else:
                 for j in range(self.n_atoms):                   
                     Tz = reward_batch[i] + self.discount * self.z[j]
@@ -144,8 +143,7 @@ class C51:
                     m_prob[action_batch[i]][i][int(m_u)] += optimal_dist[next_qvals[i]][i][j] * (bj - m_l)
             
         #loss = - torch.sum(optimal_dist * (torch.log(optimal_dist) - torch.log(m_prob)))
-
-        loss = - F.kl_div(optimal_dist ,m_prob)/self.batch_size
+        loss = - F.kl_div(optimal_dist ,m_prob)
         loss = loss.cuda()
         self.optimizer.zero_grad()
         loss.backward()
