@@ -139,9 +139,9 @@ class C51:
                     Tz = reward_batch[i] + self.discount * self.z[j]
                     Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
                     bj = (Tz - self.Vmin) / self.dz 
-                    m_l, m_u = torch.floor(bj).float(), torch.ceil(bj).float()
-                    m_prob[action_batch[i]][i][m_l] += optimal_dist[next_qvals[i]][i][j] * (m_u - bj)
-                    m_prob[action_batch[i]][i][m_u] += optimal_dist[next_qvals[i]][i][j] * (bj - m_l)
+                    m_l, m_u = torch.floor(bj), torch.ceil(bj)
+                    m_prob[action_batch[i]][i][int(m_l)] += optimal_dist[next_qvals[i]][i][j] * (m_u - bj)
+                    m_prob[action_batch[i]][i][int(m_u)] += optimal_dist[next_qvals[i]][i][j] * (bj - m_l)
             
         #loss = - torch.sum(optimal_dist * (torch.log(optimal_dist) - torch.log(m_prob)))
 
