@@ -130,7 +130,7 @@ class C51:
                 Tz = reward_batch[i]
                 Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
                 bj = (Tz - self.Vmin) / self.dz 
-                m_l, m_u = torch.floor(bj).long(), torch.ceil(bj).long()
+                m_l, m_u = torch.floor(bj), torch.ceil(bj)
                 m_prob[action_batch[i]][i][int(m_l)] += (m_u - bj)
                 m_prob[action_batch[i]][i][int(m_u)] += (bj - m_l)
             else:
