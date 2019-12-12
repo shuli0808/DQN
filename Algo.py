@@ -23,7 +23,7 @@ class C51:
         self.Vmin = -10.0
         self.Vmax = 10.0
         self.dz = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
-        self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz)
+        self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz, device = device)
         if len(obs_space.shape) == 3:
             self.q_func = model.Model(n_in=obs_space.shape, n_out=act_space.n).to(device)
             self.target_q_func = model.Model(n_in=obs_space.shape, n_out=act_space.n).to(device)
