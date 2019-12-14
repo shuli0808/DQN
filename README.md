@@ -2,7 +2,6 @@
 ## Final Project
 
 #### Getting Started
-You can either:
 
 * This is an Pytorch implementation on Distributional Q-Learning
   The link to the paper is: https://arxiv.org/pdf/1707.06887.pdf
