@@ -11,7 +11,7 @@ import torch.nn.functional as F
 class Model(nn.Module):
     def __init__(self, n_in=[4,84,84], conv_channels=[32, 64, 64],
                  conv_kernels=[8, 4, 3], conv_strides=[4, 2, 1], batch_size = 32,
-                 n_atoms=51, n_fc = [256], n_out = 6):
+                 n_atoms=51, n_fc = [128, 256], n_out = 6):
         super(Model, self).__init__()
         #paramters from paper
         self.n_in = n_in
@@ -24,7 +24,7 @@ class Model(nn.Module):
         self.Vmin = -10.0
         self.Vmax = 10.0
         self.dz = (self.Vmax - self.Vmin) / float(self.n_atoms - 1)
-        self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz)
+        self.z = torch.arange(self.Vmin, self.Vmax + self.dz, self.dz).cuda()
 
 
         c0 = n_in[0]
@@ -50,7 +50,7 @@ class Model(nn.Module):
             h0 = h
         
         self.fc_layers.append(nn.Linear(h, self.n_atoms))
-        self.fc_layers.append(nn.Softmax(dim = 1))
+        self.fc_layers.append(nn.Softmax(dim = -1))
         self.fc_layers = nn.Sequential(*self.fc_layers)
         #self.softmax = nn.Softmax(dim = 1)
 
@@ -63,18 +63,20 @@ class Model(nn.Module):
         # (flatten) reshape x into a batch of vectors
         x = x.view(x.size(0), -1)
         # feed x into the self.fc_layers
-        dist_tensor = torch.zeros((x.size()[0], self.n_out, self.n_atoms))
-        # for i in range(self.n_out):
-        #     #dist_list.append(self.fc_layers(x).view(self.n_atoms,-1))
-        #     dist_tensor[i,:] = self.fc_layers(x) ## [2, 51]
-        for i in range(x.size()[0]):
-            for j in range(self.n_out):
-                dist_tensor[i,j,:] = self.fc_layers(x)[i]
- 
 
-        res = torch.zeros((x.size()[0], self.n_out))
-        for i in range(x.size()[0]):
-            res[i,:] = torch.matmul(dist_tensor[i,:,:], self.z)
+        # Vectorized Implementation
+        dist_tensor = self.fc_layers(x).repeat(self.n_out,1,1)
+        dist_tensor = dist_tensor.permute(1,0,2)
+        res = torch.matmul(dist_tensor, self.z)
+
+
+        # dist_tensor = torch.zeros((x.size()[0], self.n_out, self.n_atoms)).cuda()
+        # for i in range(x.size()[0]):
+        #     for j in range(self.n_out):
+        #         dist_tensor[i,j,:] = self.fc_layers(x)[i]
+        # res = torch.zeros((x.size()[0], self.n_out)).cuda()
+        # for i in range(x.size()[0]):
+        #     res[i,:] = torch.matmul(dist_tensor[i,:,:], self.z)
 
         # print("dist len ", len(dist_list))
         # print("dist dimen", dist_list[0].size())

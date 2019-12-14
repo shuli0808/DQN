@@ -62,10 +62,6 @@ class C51:
         self.num_act_steps += 1
 
         with torch.no_grad():
-            # print("#######")
-            # print(self.q_func(obses))
-            # print(self.q_func(obses).max(1))
-            # print(self.q_func(obses).max(1)[1])
             greedy_actions = self.q_func(obses)[1].max(1)[1].tolist()
 
 
@@ -92,32 +88,19 @@ class C51:
         state_batch, action_batch, reward_batch, done, next_states = self.replay.cur_batch
         self.replay.cur_batch = None
 
-        # dist_list, prob = self.q_func(state_batch)       
-        # q_values = np.sum(np.multiply(prob, self.z), axis=2) 
-        
-        # next_dist_list, next_prob = self.target_q_func(next_states).detach()
-        # next_q_values = np.sum(np.multiply(prob_, self.z), axis=2) 
-
-
-
-        # next_state_values = torch.zeros(self.batch_size, device=self.device)
-        # if self.double_q:
-        #     next_state_values[~done] = next_q_values[
-        #         torch.arange(len(next_q_values)), self.q_func(next_states).argmax(1)]                
-        # else:
-        #     next_state_values[~done] = next_q_values.max(1)[0]
-
-
         curr_dist, qvals  = self.q_func.forward(state_batch)
         # curr_action_dist = curr_dist[range(batch_size), actions]
 
         next_dist, next_qval = self.target_q_func.forward(next_states)
-        next_qvals = next_qval.max(1)[1].tolist()
+        qvals = qvals.detach()
+        #next_qvals = next_qval.max(1)[1].tolist()
+        next_qvals = qvals.max(1)[1].tolist()
 
         #next_dist_ = next_dist[torch.arange(self.batch_size), action_batch]
         # next_actions = torch.max(next_qvals, 1)[1]
         # next_dist = self.model.softmax(next_dist)
-        optimal_dist = next_dist.permute(1,0,2).to(device = self.device)
+        optimal_dist = curr_dist.permute(1,0,2)
+
         # Get Optimal Actions for the next states (from distribution z)
 
 
@@ -141,10 +124,27 @@ class C51:
                     m_l, m_u = torch.floor(bj), torch.ceil(bj)
                     m_prob[action_batch[i]][i][int(m_l)] += optimal_dist[next_qvals[i]][i][j] * (m_u - bj)
                     m_prob[action_batch[i]][i][int(m_u)] += optimal_dist[next_qvals[i]][i][j] * (bj - m_l)
-            
-        #loss = - torch.sum(optimal_dist * (torch.log(optimal_dist) - torch.log(m_prob)))
-        loss = - F.kl_div(optimal_dist ,m_prob)
-        loss = loss.cuda()
+
+                
+        # # for i in range(self.batch_size):
+        # #     print(optimal_dist[action_batch[i]])
+        loss = - torch.sum(optimal_dist[action_batch] * (torch.log(m_prob[action_batch] + 1e-8)))/self.batch_size
+        # for i in range(self.batch_size):
+        #     for j in range(self.n_atoms):
+        #         mask = 1 - done[i].int()
+        #         Tz = reward_batch[i] + mask * self.discount * self.z[j]
+        #         Tz = torch.clamp(Tz, self.Vmin, self.Vmax)
+        #         bj = (Tz - self.Vmin) / self.dz 
+        #         m_l, m_u = torch.floor(bj), torch.ceil(bj)
+        #         m_prob[action_batch[i]][i][int(m_l)] += (m_u - bj) * done[i].int() + mask * optimal_dist[next_qvals[i]][i][j] * (m_u - bj)
+        #         m_prob[action_batch[i]][i][int(m_u)] += (bj - m_l) * done[i].int() + mask * optimal_dist[next_qvals[i]][i][j] * (bj - m_l)
+
+        #loss = - loss / self.batch_size
+        #loss = - F.kl_div(optimal_dist ,m_prob, reduction='batchmean')
+
+        #loss = torch.nn.CrossEntropyLoss()(optimal_dist, m_prob)
+        #loss = loss.cuda()
+
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.q_func.parameters(), 10)

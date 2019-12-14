@@ -1,13 +1,12 @@
 #!/bin/bash
 #PBS -l nodes=1:ppn=4:xk
-#PBS -l walltime=00:10:00
+#PBS -l walltime=40:00:00
 #PBS -N finaporj_dqn
-#PBS -q debug
 #PBS -e $PBS_JOBID.err
 #PBS -o $PBS_JOBID.out
 # -m and -M set up mail messages at begin,end,abort:
 # -m bea
-# -M YOUR_NETID@illinois.edu
+# -M lishu2@illinois.edu
 cd /u/training/tra230/scratch/DQN
 . /opt/modules/default/init/bash
 module load python/2.0.0
